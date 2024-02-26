@@ -1,0 +1,6 @@
+# Ignore files
+env
+.vscode
+*.log
+*.tmp
+__pycache__

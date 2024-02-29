@@ -60,14 +60,14 @@ def extract_link():
 @app.route("/uploadDoc", methods=['POST'])
 def uploadDoc():
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    os.makedirs('documents', exist_ok=True)
+    os.makedirs('./documents', exist_ok=True)
     if 'file' not in request.files:
         return "No file provided", 400
     doc_file = request.files['file']
     if doc_file.filename == '':
         return "No selected file", 400
-    doc_file.save(os.path.join('documents', doc_file.filename))
-    load_docs_and_save(directory="documents")
+    doc_file.save(os.path.join('./documents', doc_file.filename))
+    load_docs_and_save(directory="./documents")
     print("File saved successfully")
     return "Blob Success"
 

@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 class LinkScraper:
     # Reads all the inputs provided by the user
-    def __init__(self, head_url, max_length, num_of_urls, path_to_save_links = "Extracted_links.txt"):
+    def __init__(self, head_url, max_length, num_of_urls, path_to_save_links = "./Extracted_links.txt"):
         self.head_url = head_url
         self.max_length = max_length
         self.num_of_urls = num_of_urls

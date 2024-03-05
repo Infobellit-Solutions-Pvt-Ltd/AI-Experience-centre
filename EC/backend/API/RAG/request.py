@@ -1,4 +1,3 @@
-
 import os
 from glob import glob
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -7,12 +6,12 @@ from langchain_community.vectorstores.faiss import FAISS
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from rag.Link_scraper import LinkScraper
 from rag.Text_extractor import TextExtractor
-import requests
 import warnings
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import datetime
 import yaml
+import requests
 
 warnings.filterwarnings("ignore")
 
@@ -44,6 +43,7 @@ def scrape(head_url,max_length):
 @app.route('/extract_link', methods=['POST'])
 def extract_link():
     data = request.get_json()
+    print(data)
     extracted_link = data.get('link')
     print("Extracted_link",extracted_link)
     numberOfLinks = int(data.get('numberOfLinks'))
@@ -67,7 +67,7 @@ def uploadDoc():
     if doc_file.filename == '':
         return "No selected file", 400
     doc_file.save(os.path.join('./documents', doc_file.filename))
-    load_docs_and_save(directory="./documents")
+    load_docs_and_save(directory="documents")
     print("File saved successfully")
     return "Blob Success"
 
@@ -89,18 +89,23 @@ def load_docs_and_save(directory):
             try:
                 if file_path.endswith(('.txt', '.csv')):
                     loader = TextLoader(file_path, encoding="utf-8") if file_path.endswith(".txt") else CSVLoader(file_path, encoding="utf-8")
+                    print(loader)
                     documents.extend(loader.load_and_split(text_splitter=text_splitter))
                 elif file_path.endswith('.pdf'):
                     loader = PyPDFLoader(file_path)
+                    print(loader)
                     documents.extend(loader.load_and_split(text_splitter=text_splitter))
                 elif file_path.endswith(('.docx', '.doc')):
                     loader = Docx2txtLoader(file_path)
+                    print(loader)
                     documents.extend(loader.load_and_split(text_splitter=text_splitter))
                 elif file_path.endswith(('.html', '.htm')):
                     loader = BSHTMLLoader(file_path)
+                    print(loader)
                     documents.extend(loader.load_and_split(text_splitter=text_splitter))
                 elif file_path.endswith('.json'):
                     loader = JSONLoader(file_path)
+                    print(loader)
                     documents.extend(loader.load_and_split(text_splitter=text_splitter))
             except Exception as e:
                 print(f"Error loading document '{file_path}': {e}")
@@ -143,8 +148,9 @@ def get_embeddings(model_name=config["embeddings"]["name"],
 @app.route("/generator",methods = ["POST","GET"])
 def generator():
     try:
-        data = requests.get_json()
+        data = request.get_json()
         query = data.get('message', '')
+        # print(query)
         embeddings = get_embeddings()
         db_name = "faiss_index"
         if os.path.exists(db_name):
@@ -153,7 +159,7 @@ def generator():
             print("Searching...")
             retriever = new_db.as_retriever(search_type="similarity", search_kwargs={"k": 4})
             relevant_documents = retriever.get_relevant_documents(query)
-            print(relevant_documents)
+            # print(relevant_documents)
             passage = []
             meta_data = []
             for doc in relevant_documents:
@@ -164,20 +170,21 @@ def generator():
                 # print(sub_passage, sub_metadata)
 
             print(query)
-            prompt = f"""
-                Answer the following question by considering the context.
-                Question: {query}
-                Context: {passage}
-                Answer: 
-                    """
-            url = "http://192.168.0.231:8084/generate"
+            print("Passage",passage[0])
+            prompt = f"{passage[0][:10]} {query}"
+            # url = "https://my-opt-app5.1dxnn8ccpevd.eu-de.codeengine.appdomain.cloud/generate"
+            url = "http://192.168.0.147:8026/generate"
             data = {
-                "inputs": prompt,
-                "parameters": {"max_new_tokens": 200}
+                "prompt": prompt,
+                # "parameters": {"max_new_tokens": 200}
             }
             response = requests.post(url=url, json=data)
-            ans = response.json()["generated_text"]
-            print(ans)
+            # response = requests.post(url=url, json=data)
+            response.raise_for_status()
+            print('Response text:',response)
+            ans = response.json()["text"]
+            # print(ans)
+            print("Response generated",ans)
             return ans
         else:
             return 'No database file found'
@@ -186,4 +193,4 @@ def generator():
         return None
 
 if __name__=="__main__":
-    app.run(debug=True,host = "0.0.0.0",port=8888)
+    app.run(debug=True,host="0.0.0.0",port=8888)

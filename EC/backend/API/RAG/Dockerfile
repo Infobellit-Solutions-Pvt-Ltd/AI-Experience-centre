@@ -10,9 +10,6 @@ COPY requirements.txt .
 # install the dependencies
 RUN pip install -r requirements.txt
 
-# Install faiss
-RUN pip install faiss-cpu
-
 # Copy the flask code app to the container
 COPY . .
 

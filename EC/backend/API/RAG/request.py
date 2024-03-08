@@ -156,7 +156,7 @@ def get_embeddings(model_name=config["embeddings"]["name"],
 
 # <----------------------------------------------------------Getting the WatsonxLLM---------------------------------------------------------------->
 
-def get_llm():
+def get_llm(wxa_api_key,wxa_project_id,wxa_url):
     """
     Create a WatsonxLLM model with the specified parameters.
     
@@ -170,10 +170,8 @@ def get_llm():
     wxa_project_id = "eed30038-0353-4e6a-b2b4-22f2fcd17161" # Watsonx projectID
     wxa_url = "https://eu-de.ml.cloud.ibm.com"  #Franfurt
     """
-    wxa_api_key = os.getenv("WATSONX_APIKEY")
-    wxa_project_id = os.getenv("WATSONX_PROJECT_ID")
-    wxa_url = os.getenv("WATSONX_URL")
-    print(wxa_api_key,wxa_project_id,wxa_url)
+    # print(wxa_api_key,wxa_project_id,wxa_url)
+
     try:
         parameters = {
             GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
@@ -202,7 +200,14 @@ def generator():
     try:
         data = request.get_json()
         query = data.get('message', '')
-        watsonxllm = get_llm()
+        wxa_api_key = data.get('wxa_api_key', '')
+        wxa_project_id = data.get('wxa_project_id', '')
+        wxa_url = data.get('wxa_url', '')
+        print(wxa_url, wxa_api_key, wxa_project_id)
+        os.environ['WATSONX_APIKEY'] = wxa_api_key
+        os.environ['WATSONX_PROJECT_ID'] = wxa_project_id
+        os.environ['WATSONX_URL'] = wxa_url
+        watsonxllm = get_llm(wxa_api_key, wxa_project_id, wxa_url)
         embeddings = get_embeddings()
         print('LLM',watsonxllm.model_id)
         db_name = "faiss_index"
@@ -219,7 +224,7 @@ def generator():
                 sub_metadata = doc.metadata
                 passage.append(sub_passage)
                 meta_data.append(sub_metadata)
-            print("Extracted context",passage,"\nMetadata:" ,meta_data)
+            # print("Extracted context",passage,"\nMetadata:" ,meta_data)
 
             # print(query)
             context = passage
@@ -232,10 +237,9 @@ def generator():
             Question:{query}
             Answer: 
             """
-            print(prompt_template)
+            # print(prompt_template)
             response = watsonxllm.generate(prompt=prompt_template)
             answer = response['results'][0]['generated_text']
-            # print(answer)
             return answer
         else:
             return 'No database file found'

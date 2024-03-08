@@ -3,8 +3,7 @@ __pycache__
 documents
 env
 faiss_index
-API-testing.py
+API-testing.pyS
 features.py
 demo.py
 Extracted_links.txt
-# requirements.txt

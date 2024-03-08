@@ -1,31 +1,52 @@
-from flask import Flask, request, jsonify
-from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
+from langchain.vectorstores.faiss import FAISS
+from request import get_embeddings, get_llm, load_docs_and_save
+import os
 
+load_docs_and_save(directory="documents")
+def generator():
+    try:
+        watsonxllm = get_llm()
+        print("Accessing model:",watsonxllm.model_id)
+        embeddings = get_embeddings()
+        print("getting embedding")
+        db_name = "faiss_index"
+        if os.path.exists(db_name):
+            new_db = FAISS.load_local(db_name, embeddings,allow_dangerous_deserialization=True)
+            print("Database getting access")
+            print("Searching...")
+            query = input("Enter the ")
+            retriever = new_db.as_retriever(search_type="similarity", search_kwargs={"k": 4})
+            relevant_documents = retriever.get_relevant_documents(query)
+            # print(relevant_documents)
+            passage = []
+            meta_data = []
+            for doc in relevant_documents:
+                sub_passage = doc.page_content
+                sub_metadata = doc.metadata
+                passage.append(sub_passage)
+                meta_data.append(sub_metadata)
+            print("Extracted context",passage,"\nMetadata:" ,meta_data)
 
-# Load the text-generation pipeline
-model_name = "facebook/opt-125m"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name)
-generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
-generator.model.to("cpu")
+            # print(query)
+            context = passage
+            prompt_template = f"""
+            Context:{context}
+            ###
+            Answer the following question using only information from the Context. 
+            Answer in a complete sentence, with proper capitalization and punctuation. 
+            If there is no good answer in the Context, say "I don't know".
+            Question:{query}
+            Answer: 
+            """
+            # print(prompt_template)
+            response = watsonxllm.generate(prompt=prompt_template)
+            print('Response',response['results'][0]['generated_text'])
+            return response
+        else:
+            return 'No database file found'
+    except Exception as e:
+        print(f"Error occurred during generation: {e}")
+        return None
+    
 
-
-app = Flask(__name__)
-
-
-@app.route("/generate", methods=["POST"])
-def generate_text():
-    # Get the prompt from the request body
-    prompt = request.json.get("prompt")
-
-
-    # Generate text using the pipeline
-    response = generator(prompt)
-
-
-    # Return the generated text as JSON
-    return jsonify({"text": response[0]["generated_text"]})
-
-
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=8026)
+generator()

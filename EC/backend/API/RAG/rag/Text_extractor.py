@@ -1,6 +1,6 @@
 import os,textwrap
 from langchain.document_loaders.recursive_url_loader import RecursiveUrlLoader
-from langchain.document_transformers import BeautifulSoupTransformer
+from langchain_community.document_transformers import BeautifulSoupTransformer
 
 # It reads all the text available in the website and store in a text file 
 class TextExtractor:

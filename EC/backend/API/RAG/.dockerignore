@@ -1,4 +1,10 @@
 # ignore directories
-/env
-
-/__pycache__
+__pycache__
+documents
+env
+faiss_index
+API-testing.py
+features.py
+demo.py
+Extracted_links.txt
+# requirements.txt

@@ -1,7 +1,9 @@
-# Ignore directories
+# Ignore directories and files
 env/
-
-# Ignore files
-.env
-
-__pycache__/
+__pycache__
+documents
+faiss_index
+API-testing.py
+demo.py
+Extracted_links.txt
+features.py

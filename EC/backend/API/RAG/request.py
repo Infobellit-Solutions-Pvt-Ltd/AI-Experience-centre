@@ -6,18 +6,21 @@ from langchain_community.vectorstores.faiss import FAISS
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from rag.Link_scraper import LinkScraper
 from rag.Text_extractor import TextExtractor
+from ibm_watson_machine_learning.foundation_models.utils.enums import DecodingMethods
+from ibm_watson_machine_learning.foundation_models import Model
+from ibm_watson_machine_learning.metanames import GenTextParamsMetaNames as GenParams
 import warnings
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import datetime
 import yaml
-import requests
 
 warnings.filterwarnings("ignore")
 
 app = Flask(__name__)
 CORS(app)
 
+# <----------------------------------------------------------Web Scrapping------------------------------------------------------------------------->
  
 # Web Scraping ()
 def scrape(head_url,max_length):
@@ -57,6 +60,8 @@ def extract_link():
     # Return a response if needed
     return jsonify({"message": "Link received successfully"})
 
+# <----------------------------------------------------Uploading documents from local machine------------------------------------------------------> 
+
 @app.route("/uploadDoc", methods=['POST'])
 def uploadDoc():
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
@@ -70,6 +75,8 @@ def uploadDoc():
     load_docs_and_save(directory="documents")
     print("File saved successfully")
     return "Blob Success"
+
+# <------------------------------------------Loading all the documents from a directory and embedding them-----------------------------------------> 
 
 loaded_docs = set()
 # Function to load documents from the directory
@@ -116,6 +123,8 @@ def load_docs_and_save(directory):
     # return embeddings
     return "Documents loaded"
 
+# <----------------------------------------------------loading the required embedding model-------------------------------------------------------->
+
 def load_config():
     """
     Load configuration from the 'config.yaml' file.
@@ -123,10 +132,12 @@ def load_config():
     Returns:
         dict: Configuration settings.
     """
-    with open('config.yaml', 'r') as file:
-        config = yaml.safe_load(file)
-    return config
-
+    try:
+        with open('config.yaml', 'r') as file:
+            config = yaml.safe_load(file)
+        return config
+    except Exception as e:
+        print(f"Error in loading the config file: {e}")
 config = load_config()
  
 def get_embeddings(model_name=config["embeddings"]["name"],
@@ -143,19 +154,60 @@ def get_embeddings(model_name=config["embeddings"]["name"],
     """
     return HuggingFaceEmbeddings(model_name=model_name, model_kwargs=model_kwargs)
 
+# <----------------------------------------------------------Getting the WatsonxLLM---------------------------------------------------------------->
 
+def get_llm():
+    """
+    Create a WatsonxLLM model with the specified parameters.
+    
+    Returns:
+        Model: A WatsonxLLM model object.
+        
+    Raises:
+        Exception: If there is an error creating the WatsonxLLM model.
+    
+    wxa_api_key = "S9JiP4YV24yiXG1H6m3ZVkzWQ8VcVxVRMg61nDxOx1ps" # IBM APIKEY
+    wxa_project_id = "eed30038-0353-4e6a-b2b4-22f2fcd17161" # Watsonx projectID
+    wxa_url = "https://eu-de.ml.cloud.ibm.com"  #Franfurt
+    """
+    wxa_api_key = os.getenv("WATSONX_APIKEY")
+    wxa_project_id = os.getenv("WATSONX_PROJECT_ID")
+    wxa_url = os.getenv("WATSONX_URL")
+    print(wxa_api_key,wxa_project_id,wxa_url)
+    try:
+        parameters = {
+            GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
+            GenParams.MIN_NEW_TOKENS: 1,
+            GenParams.MAX_NEW_TOKENS: 100
+        }
+
+        model = Model(
+            model_id='ibm/granite-13b-chat-v2',
+            params=parameters,
+            credentials={
+                "url": wxa_url,
+                "apikey": wxa_api_key,
+            },
+            project_id=wxa_project_id
+        )
+        return model
+
+    except Exception as e:
+        raise Exception("Error creating WatsonxLLM model: {}".format(e))
+
+# <---------------------------------------------------------------Response Generator--------------------------------------------------------------->
 
 @app.route("/generator",methods = ["POST","GET"])
 def generator():
     try:
         data = request.get_json()
         query = data.get('message', '')
-        # print(query)
+        watsonxllm = get_llm()
         embeddings = get_embeddings()
+        print('LLM',watsonxllm.model_id)
         db_name = "faiss_index"
         if os.path.exists(db_name):
-                
-            new_db = FAISS.load_local(db_name, embeddings)
+            new_db = FAISS.load_local(db_name, embeddings,allow_dangerous_deserialization=True)
             print("Searching...")
             retriever = new_db.as_retriever(search_type="similarity", search_kwargs={"k": 4})
             relevant_documents = retriever.get_relevant_documents(query)
@@ -167,25 +219,24 @@ def generator():
                 sub_metadata = doc.metadata
                 passage.append(sub_passage)
                 meta_data.append(sub_metadata)
-                # print(sub_passage, sub_metadata)
+            print("Extracted context",passage,"\nMetadata:" ,meta_data)
 
-            print(query)
-            print("Passage",passage[0])
-            prompt = f"{passage[0][:10]} {query}"
-            # url = "https://my-opt-app5.1dxnn8ccpevd.eu-de.codeengine.appdomain.cloud/generate"
-            url = "http://192.168.0.147:8026/generate"
-            data = {
-                "prompt": prompt,
-                # "parameters": {"max_new_tokens": 200}
-            }
-            response = requests.post(url=url, json=data)
-            # response = requests.post(url=url, json=data)
-            response.raise_for_status()
-            print('Response text:',response)
-            ans = response.json()["text"]
-            # print(ans)
-            print("Response generated",ans)
-            return ans
+            # print(query)
+            context = passage
+            prompt_template = f"""
+            Context:{context}
+            ###
+            Answer the following question using only information from the Context. 
+            Answer in a complete sentence, with proper capitalization and punctuation. 
+            If there is no good answer in the Context, say "I don't know".
+            Question:{query}
+            Answer: 
+            """
+            print(prompt_template)
+            response = watsonxllm.generate(prompt=prompt_template)
+            answer = response['results'][0]['generated_text']
+            # print(answer)
+            return answer
         else:
             return 'No database file found'
     except Exception as e:

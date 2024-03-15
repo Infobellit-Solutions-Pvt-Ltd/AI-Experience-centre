@@ -1,52 +1,31 @@
-from langchain.vectorstores.faiss import FAISS
-from request import get_embeddings, get_llm, load_docs_and_save
-import os
+# from app import get_llm
+# import os
 
-load_docs_and_save(directory="documents")
-def generator():
-    try:
-        watsonxllm = get_llm()
-        print("Accessing model:",watsonxllm.model_id)
-        embeddings = get_embeddings()
-        print("getting embedding")
-        db_name = "faiss_index"
-        if os.path.exists(db_name):
-            new_db = FAISS.load_local(db_name, embeddings,allow_dangerous_deserialization=True)
-            print("Database getting access")
-            print("Searching...")
-            query = input("Enter the ")
-            retriever = new_db.as_retriever(search_type="similarity", search_kwargs={"k": 4})
-            relevant_documents = retriever.get_relevant_documents(query)
-            # print(relevant_documents)
-            passage = []
-            meta_data = []
-            for doc in relevant_documents:
-                sub_passage = doc.page_content
-                sub_metadata = doc.metadata
-                passage.append(sub_passage)
-                meta_data.append(sub_metadata)
-            print("Extracted context",passage,"\nMetadata:" ,meta_data)
+# wxa_api_key = "S9JiP4YV24yiXG1H6m3ZVkzWQ8VcVxVRMg61nDxOx1ps" # IBM APIKEY
+# wxa_project_id = "eed30038-0353-4e6a-b2b4-22f2fcd17161" # Watsonx projectID
+# wxa_url = "https://eu-de.ml.cloud.ibm.com"  #Franfurt
+# os.environ['WATSONX_APIKEY'] = wxa_api_key
+# os.environ['WATSONX_PROJECT_ID'] = wxa_project_id
+# os.environ['WATSONX_URL'] = wxa_url
+# model = get_llm(wxa_api_key,wxa_project_id,wxa_url)
 
-            # print(query)
-            context = passage
-            prompt_template = f"""
-            Context:{context}
-            ###
-            Answer the following question using only information from the Context. 
-            Answer in a complete sentence, with proper capitalization and punctuation. 
-            If there is no good answer in the Context, say "I don't know".
-            Question:{query}
-            Answer: 
-            """
-            # print(prompt_template)
-            response = watsonxllm.generate(prompt=prompt_template)
-            print('Response',response['results'][0]['generated_text'])
-            return response
-        else:
-            return 'No database file found'
-    except Exception as e:
-        print(f"Error occurred during generation: {e}")
-        return None
-    
+# print(model.generate(prompt = "Who is the founder of IBM"))
+import requests
 
-generator()
+url = "https://tgi-deployment.1dxnn8ccpevd.eu-de.codeengine.appdomain.cloud/generate"
+data = {
+    "inputs": "What is DeepLearning?",
+    "parameters": {
+        "max_new_tokens": 20
+    }
+}
+headers = {
+    "Content-Type": "application/json"
+}
+print("Searching...")
+response = requests.post(url, json=data, headers=headers)
+
+if response.status_code == 200:
+    print(response.json())
+else:
+    print("Failed to send request")

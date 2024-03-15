@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Backend images 
+"""
+RAG, Text to image, image to text
+"""
 # Function to pull Docker image
 pull_image() {
     image_name=$1

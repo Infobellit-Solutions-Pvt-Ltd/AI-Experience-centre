@@ -1,4 +1,4 @@
-#RAG application
+# RAG application
 Retrieval-Augmented Generation (RAG) is the process of optimizing the output of a large language model, so it references an authoritative knowledge base outside of its training data sources before generating a response.
 
 ## Architecture
@@ -10,13 +10,9 @@ Retrieval-Augmented Generation (RAG) is the process of optimizing the output of 
 - Storing
     - Save into vector stores
 - Retriever
-    - Retrieve relevant docs of the user question using 'similarity_search'
-- Foundational model
-    - Any foundational model for generating the response from the user questiona with retrieved documents.
-
-## Web Scraping and Text Extraction
-
-The './rag' Python script defines a Flask web application for web scraping and text extraction, using the `LinkScraper` and `TextExtractor` classes from the `rag` package.
+    - Retrieve relevant docs of the user question using 'similarity_search' algorithm
+- LLM
+    - Any foundational model for generating the response from the user question with retrieved documents.
 
 ## Dependencies
 
@@ -26,33 +22,39 @@ The './rag' Python script defines a Flask web application for web scraping and t
 - `ibm_watson_machine_learning`: Accessing Watsonx foundational model.
 - `HuggingFace` : Accessing the Embedding models.
 - `rag`: A package for web scraping and text extraction.
-    - `bs4` : Formatting the HTML document
+- `bs4` : Formatting the HTML document
 - `requests`: A library for making HTTP requests.
 - `warnings`: Allows for handling warning messages.
 - `flask & CORS`: Allows to create end-point
 
-## Data loading Functions
+## Get Started
 
-- `scrape(head_url, max_urls)`: Scrapes a web page given the URL `head_url` and a maximum length `max_urls`.
-- `extract_link()`: Extracts a link from the front end and initiates the scraping process.
-- `uploadDoc()`: Uploads a document and saves it to a specified directory.
+The './rag' Python script defines a Flask web application for web scraping(extracts URLs) and text extraction, using the `LinkScraper` and `TextExtractor` classes from the `rag` package.
 
-## Document Loading and Processing
+###  Input Documents
+- Web scrapping
 
-- `load_docs_and_save(directory)`: Loads documents from a specified directory and saves them for further processing.
-- `get_embeddings()`: Retrieves the embeddings model for the loaded documents.
+    - `/extract_link'`: Scrapes all the available URLs withe the limit of `max_urls` from the given URL `head_url` and save the extracted content in the documents/content.txt.
+- Upload local documents
+    - `/uploadDoc`:Upload the textual documents from the local machine (supported:.txt,.pdf,.docx,.csv,.json,.html).
 
-## Generation
+### Document Chunking and Embedding
 
-- `generator()`: Generates a response to a given query based on the loaded documents and their embeddings.
+- `load_docs_and_save(directory)`: This method loads documents from a specified directory and saves them using `FAISS` vector db in the `faiss_index` directory for further processing.
+- `get_embeddings()`: Gives the embeddings for the loaded documents based on the model from the config file.
 
-## Flask Application
+### Generation
 
-- Defines routes for the web application, such as `/extract_link`, `/uploadDoc`, and `/generator`.
+- `/generator()`: Generates a response to the user question by the relevant data from the loaded documents.
+
+### Other APIs and Flask application
+- `/getData`: This API displays the scrapped content to the user
 - Uses CORS (Cross-Origin Resource Sharing) for handling requests from different origins.
 - Runs the Flask application on `localhost` at port `8888` in debug mode.
 
-Please note that the actual functionality of the code depends on the implementation details of the classes and functions from the `rag` and `langchain` packages.
+<!-- Please note that the actual functionality of the code depends on the implementation details of the classes and functions from the `rag` and `langchain` packages. -->
 
-## Installation
- - create a virtual environment(python -m venv env) pip install -r requirements.txt
+## Get Started
+ - create any virtual environment(python -m venv env) and activate it
+ - install the requirements `pip install -r requirements.txt`
+ - run the `python app.py` file and the server gets activated with the port `8888`.

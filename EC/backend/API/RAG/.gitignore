@@ -1,5 +1,6 @@
 # Ignore directories and files
 env/
+.idea
 __pycache__
 documents
 faiss_index
@@ -7,5 +8,9 @@ API-testing.py
 demo.py
 Extracted_links.txt
 features.py
+features2.py
+features3.py
 re.py
+customllm.py
 demo.py
+app.py

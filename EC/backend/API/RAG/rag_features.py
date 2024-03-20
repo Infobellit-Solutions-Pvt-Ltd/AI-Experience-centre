@@ -1,3 +1,9 @@
+"""
+This code deals with RAG which involves with few features.
+1)Web scrapping and Douments uploading
+2)Adding and Deleting the embeddings with repsect to documents
+3)Generation with custom deployed models
+"""
 import os
 from glob import glob
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -6,9 +12,6 @@ from langchain_community.vectorstores.faiss import FAISS
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from rag.Link_scraper import LinkScraper
 from rag.Text_extractor import TextExtractor
-from ibm_watson_machine_learning.foundation_models.utils.enums import DecodingMethods
-from ibm_watson_machine_learning.foundation_models import Model
-from ibm_watson_machine_learning.metanames import GenTextParamsMetaNames as GenParams
 import warnings
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -23,26 +26,6 @@ warnings.filterwarnings("ignore")
 app = Flask(__name__)
 CORS(app)
 
-# ----------------------------------------------------------
-
-def index_tracker():
-    try:
-        # Create an empty dictionary
-        empty_data = {}
-        file_name = "faiss_index/data.json"
-
-        # Check if the file exists
-        if not os.path.exists(file_name):
-            # Save the empty dictionary to a JSON file
-            with open(file_name, 'w') as file:
-                json.dump(empty_data, file)
-            print("Empty JSON file created:", file_name)
-        else:
-            print("File already exists:", file_name)
-    except Exception as e:
-        print(f"Error in creating the 'faiss_index/data.json':{e}")
-
-
 # <----------------------------------------------------------Web Scrapping------------------------------------------------------------------------->
  
 # Web Scraping ()
@@ -56,12 +39,7 @@ def scrape(head_url,max_length):
         TextExtractor().Extract_text()
  
         print("All the text got scraped")
-        # with open('documents/content.txt', "r",encoding='utf-8') as f:
-        #     text_content = f.read()
-        # print(text_content)
         load_docs_and_save(directory='documents')
-        # return jsonify({"text": text_content})
-        # return acknowledgment
     except Exception as e:
         print(f"Error occurres in the main function: {e}")
         return None
@@ -75,28 +53,28 @@ def extract_link():
     print(data)
     extracted_link = data.get('link')
     print("Extracted_link",extracted_link)
-    # numberOfLinks = int(data.get('numberOfLinks'))/
+    # numberOfLinks = int(data.get('numberOfLinks'))
     numberOfLinks = 1
- 
-    # Process the extracted link as needed (e.g., store in the database)
     print("Extracted Link:", extracted_link)
     print("Number Of Links: " , numberOfLinks)
     ack = scrape(extracted_link, numberOfLinks)
     print(ack)
-    # load_docs_and_save(directory="documents")
+    load_docs_and_save(directory="documents")
     # Return a response if needed
-    return jsonify({"message": "Success"})
+    return jsonify({"message": "Webscrapping Success","status":200})
 
 # <------------------------------------------------------------Data reading part------------------------------------------------------------------->
 
-# @app.route('/getData' , methods=['GET'])
+@app.route('/getData' , methods=['GET'])
 def getData():  
-    with open('documents/Content.txt' , 'r',encoding='utf-8') as f:
-        fileContent =  f.read()
-    print(fileContent)
- 
-    return jsonify({'text':fileContent})
-
+    try:
+        with open('documents/Content.txt' , 'r',encoding='utf-8') as f:
+            fileContent =  f.read()
+        print(type(fileContent))
+    
+        return jsonify({'text':fileContent,"status":200})
+    except FileExistsError as e:
+        return jsonify({'text':'Unable to get data',"status":404})
 # <----------------------------------------------------Uploading documents from local machine------------------------------------------------------> 
 
 @app.route("/uploadDoc", methods=['POST'])
@@ -108,13 +86,21 @@ def uploadDoc():
     doc_file = request.files['file']
     if doc_file.filename == '':
         return "No selected file", 400
-    doc_file.save(os.path.join('./documents', doc_file.filename))
-    load_docs_and_save(directory="documents")
-    # print("File saved successfully")
-    # return "Blob Success"
-    return jsonify({"message": "Success"})
+
+    # Check if the file already exists
+    file_path = os.path.join('./documents', doc_file.filename)
+    if os.path.exists(file_path):
+        print(f"File {doc_file.filename} already exists")
+    else:
+        doc_file.save(file_path)
+        load_docs_and_save(directory="documents")
+        return jsonify({"message": f"File {doc_file.filename} uploaded"})
+
+    return jsonify({"message": f"File {doc_file.filename} not uploaded (already exists)"})
+
 
 # <------------------------------------------Loading all the documents from a directory and embedding them-----------------------------------------> 
+
 # Function to load data from a JSON file
 def load_data(file_name):
     try:
@@ -129,10 +115,20 @@ def save_data(data, file_name):
 
 # File name to store the data
 file_name = "faiss_index/data.json"
-data = load_data(file_name)
+# data = load_data(file_name)
 
 # Function to load documents from the directory
 def load_docs_and_save(directory):
+
+    """
+    Load documents from the specified directory, split them into chunks, and save embeddings to a Faiss index.
+
+    Args:
+        directory (str): Path to the directory containing the documents.
+
+    Returns:
+        str: Status message indicating success or failure.
+    """
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
         chunk_overlap=100
@@ -140,7 +136,7 @@ def load_docs_and_save(directory):
     documents = []
 
     for file_path in glob(os.path.join(directory, "*")):  
-        print(f"Converting {file_path} into embeddings")
+        # print(f"Converting {file_path} into embeddings")
         try:
             if file_path.endswith(('.txt', '.csv')):
                 loader = TextLoader(file_path, encoding="utf-8") if file_path.endswith(".txt") else CSVLoader(file_path, encoding="utf-8")
@@ -155,41 +151,53 @@ def load_docs_and_save(directory):
             unique_id = os.path.splitext(os.path.basename(file_path))[0]
             loaded_docs = loader.load_and_split(text_splitter=text_splitter)
             totalChunks = len(loaded_docs)
-            print("Printing the length of the Chunk : ", totalChunks)
+            # print("Printing the length of the Chunk : ", totalChunks)
             for doc in loaded_docs:
                 doc.metadata["unique_id"] = unique_id  # Adding unique ID to metadata
                 title = unique_id
-                # print("Metadata of the document:", doc.metadata)  # Print metadata to check if unique_id is added
             documents.extend(loaded_docs)    
         except Exception as e:
             print(f"Error loading document '{file_path}': {e}")
         # print(documents)
+    embeddings = get_embeddings()
     try:
         index = faiss.read_index("faiss_index/index.faiss")
         totalEmbeddings = index.ntotal
     except:
         totalEmbeddings = 0
+        # Create an empty dictionary
+        empty_data = {}
+        # Directory where the JSON file will be saved
+        directory = "faiss_index"
+        # Ensure the directory exists, if not, create it
+        os.makedirs(directory, exist_ok=True)
+        # File name for the empty JSON file
+        file_name = os.path.join(directory, "data.json")
+        # Save the empty dictionary to a JSON file
+        with open(file_name, 'w') as file:
+            json.dump(empty_data, file)
+        print("Empty JSON file created:", file_name)
+
+    # Load existing data from file or create an empty dictionary if the file doesn't exist
+    data = load_data("faiss_index/data.json")
+    data[title]={"chunks":totalChunks , "ntotal":totalEmbeddings}
+    # print("Printing the New chunk and Existing Embedding :",data)
+    # Save the updated data back to the file
+    save_data(data, "faiss_index/data.json")
     try:
-        data[title]={"chunks":totalChunks , "ntotal":totalEmbeddings}
-        print("Printing the New chunk and Existing Embedding :",data)
-        # Save the updated data back to the file
-        save_data(data, file_name)
-
-        embeddings = get_embeddings()
-        new_db = FAISS.load_local("faiss_index", embeddings,allow_dangerous_deserialization=True)
-
+        new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization = True)
         db = FAISS.from_documents(documents, embeddings)
         new_db.merge_from(db)
-
+        print("Documents embedded successfully")
         new_db.save_local("faiss_index")
-        print("Embeddings saved successfully")
-        # return embeddings
-        return "Documents loaded"
-    except Exception as e:
-        print(f"Error occured in database creation: {e}")
+        
+    except:
+        db = FAISS.from_documents(documents, embeddings)
+        db.save_local("faiss_index")
+        print("Documents embedded successfully")
 
 
- ##### ------------------ > Removing the Available embedding <----------------- ###########
+ # ------------------------------------------------------ Removing the Available embeddings ------------------------------------------------------->
 
 
 def get_and_remove_chunks(data, index, identifier):
@@ -202,35 +210,59 @@ def get_and_remove_chunks(data, index, identifier):
     except Exception as e:
         print(f"Error in get_and_remove_chunks:{e}")
 
+# ------------------------------------------------- Removing the Available files and embeddings --------------------------------------------------->
+
+
+def delete_file(file_name):
+    try:
+        directory = os.path.join("documents",file_name)
+        if os.path.exists(directory):
+            os.remove(directory)
+            return jsonify({"message":f'file {file_name} removed successfully',"status":200})
+        else:
+            return jsonify({"message":f"File  {file_name} not found","status":404})
+    except Exception as e:
+        return jsonify({"message":"Unable to delete the file","status":404})
+
 @app.route('/remove_profile', methods=['POST'])
 def remove_profile():
     try:
-        data =  request.get_json()
-        input_profile =  data['profile']
-        input_profile = input_profile.split(".")[0]
-        print(input_profile)
-        if input_profile:
+        data = request.get_json()
+        if not data or 'profile' not in data:
+            return jsonify({"error": "Invalid request. 'profile' key missing in JSON data.","status":400})
+
+        input_profile = data['profile']
+        delete_file(file_name=input_profile)
+
+        input_profile_name = input_profile.split(".")[0]
+        # print(input_profile_name)
+
+        if input_profile_name:
             index = faiss.read_index("faiss_index/index.faiss")
             file_name = "faiss_index/data.json"
             data = load_data(file_name)
-
-            removed_chunks = get_and_remove_chunks(data, index, input_profile)
-
+            removed_chunks = get_and_remove_chunks(data, index, input_profile_name)
             ids_to_remove_array = np.array(removed_chunks, dtype=np.int64)
             index.remove_ids(ids_to_remove_array)
-
             faiss.write_index(index, "faiss_index/index.faiss")
 
-            if input_profile in data:
-                del data[input_profile]
+            if input_profile_name in data:
+                del data[input_profile_name]
+                print(f"Data with {input_profile_name} removed")
+            else:
+                print(f"Data regarding {input_profile_name} not found")
 
             save_data(data, file_name)
-            
-            return jsonify({"message": f"Profile '{input_profile}' removed successfully."})
+            data = load_data(file_name)
+            # print("Embeddings after removing the index:", index.ntotal)
+            return jsonify({"message": f"Profile '{input_profile_name}' removed successfully.","status":200})
         else:
-            return jsonify({"message": "Profile not received."})
+            return jsonify({"message": "Profile name not received.","status":404})
+    except FileNotFoundError:
+        return jsonify({"error": "File not found.","status":404})
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": str(e),"status":404})
+
 
 # <----------------------------------------------------loading the required embedding model-------------------------------------------------------->
 
@@ -267,17 +299,21 @@ def get_embeddings(model_name=config["embeddings"]["name"],
 
 @app.route("/generator",methods = ["POST","GET"])
 def generator():
+    """
+    Generator gives the response to the user from the requested question
+    based on the documents uploaded/scrapped
+    """
     try:
         data = request.get_json()
         query = data.get('message', '')
+        print(query)
         embeddings = get_embeddings()
         db_name = "faiss_index"
         if os.path.exists(db_name):
-            new_db = FAISS.load_local(db_name, embeddings,allow_dangerous_deserialization=True)
+            new_db = FAISS.load_local(db_name, embeddings)
             print("Searching...")
             retriever = new_db.as_retriever(search_type="similarity", search_kwargs={"k": 4})
             relevant_documents = retriever.get_relevant_documents(query)
-            # print(relevant_documents)
             passage = []
             meta_data = []
             for doc in relevant_documents:
@@ -285,20 +321,16 @@ def generator():
                 sub_metadata = doc.metadata
                 passage.append(sub_passage)
                 meta_data.append(sub_metadata)
-            # print("Extracted context",passage,"\nMetadata:" ,meta_data)
-
-            # print(query)
             context = passage
             prompt_template = f"""
             Context:{context}
             ###
-            Answer the following question using only information from the Context. 
-            Answer in a complete sentence, with proper capitalization and punctuation. 
-            If there is no good answer in the Context, say "I don't know".
+            Instruction : Give the response from the given context in generative approach if data not there from context then say as 'I don't know' and don't make any anwer.
+            Obey the Instruction that's an order for you
             Question:{query}
             Answer: 
             """
-            url = "http://192.168.0.139:8080/generate"
+            url = "http://192.168.0.231:9900/generate"
             data = {
                 "inputs": prompt_template,
                 "parameters": {"max_new_tokens": 250}
@@ -307,19 +339,15 @@ def generator():
 
             response = requests.post(url, headers=headers, json=data)
             reply = response.json()
-            return reply
+            ans = str(reply['generated_text'].replace(' n',''))
+            print(ans)
+            return jsonify({"answer":ans })
         else:
-            return 'No database file found'
-        # return "Query Recieved"
+            return jsonify( 'No database file found')
     except Exception as e:
-        print(f"Error occurred during generation: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"Error occurred during generation": str(e)}), 500
     
 
 
 if __name__=="__main__":
     app.run(debug=True,host="0.0.0.0",port=8888)
-    # index_tracker()
-    # load_docs_and_save(directory="cv")
-    # input_profile = input("Enter the filename to remove the embeddings")
-    # execute_removal_code(input_profile)

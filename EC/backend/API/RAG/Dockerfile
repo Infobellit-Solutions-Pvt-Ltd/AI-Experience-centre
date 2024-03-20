@@ -20,4 +20,4 @@ COPY config.yaml .
 EXPOSE 8888
 
 # Specify the commmand to run on container to start
-CMD [ "python", "app.py" ]
+CMD [ "python", "rag_features.py" ]

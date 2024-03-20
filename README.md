@@ -3,4 +3,5 @@ This is an AI experince centre where you can get some features using AI.This rep
 
 ##Get started
 
--Enter the EC directory `cd/EC`
+- Enter the EC directory `cd/EC`
+- Follow the instructions in the given readme file

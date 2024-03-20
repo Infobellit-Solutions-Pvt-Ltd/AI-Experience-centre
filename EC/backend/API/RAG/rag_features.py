@@ -10,8 +10,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, JSONLoader, CSVLoader, BSHTMLLoader, Docx2txtLoader
 from langchain_community.vectorstores.faiss import FAISS
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
-from rag.Link_scraper import LinkScraper
-from rag.Text_extractor import TextExtractor
+from Scrapping.Link_scraper import LinkScraper
+from Scrapping.Text_extractor import TextExtractor
 import warnings
 from flask import Flask, jsonify, request
 from flask_cors import CORS

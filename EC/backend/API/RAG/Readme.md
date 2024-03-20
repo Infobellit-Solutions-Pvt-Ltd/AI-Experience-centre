@@ -2,7 +2,7 @@
 Retrieval-Augmented Generation (RAG) is the process of optimizing the output of a large language model, so it references an authoritative knowledge base outside of its training data sources before generating a response.
 
 ## Architecture
-![RAG](/RAG.jpg)
+![RAG](./RAG.jpg)
 - Document Loading
     - WebScraping
     - Uploading documents 

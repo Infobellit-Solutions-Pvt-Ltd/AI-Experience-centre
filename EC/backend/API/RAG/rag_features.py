@@ -2,7 +2,8 @@
 This code deals with RAG which involves with few features.
 1)Web scrapping and Douments uploading
 2)Adding and Deleting the embeddings with repsect to documents
-3)Generation with custom deployed models
+3)Generation model deployed in the local server with TGI image
+Also interaction with llm 
 """
 import os
 from glob import glob
@@ -330,7 +331,7 @@ def generator():
             Question:{query}
             Answer: 
             """
-            url = "http://192.168.0.231:9900/generate"
+            url = "http://192.168.0.139:8081/generate"
             data = {
                 "inputs": prompt_template,
                 "parameters": {"max_new_tokens": 250}
@@ -347,6 +348,20 @@ def generator():
     except Exception as e:
         return jsonify({"Error occurred during generation": str(e)}), 500
     
+@app.route('/llm', methods=['POST'])
+def llm():
+    data = request.get_json()
+    query = data['text']
+    url = "http://192.168.0.139:8081/generate"
+    data = {
+        "inputs":query,
+        "parameters":{
+            "max_new_tokens":250
+        }
+    }
+    response = requests.post(url,json=data)
+    ans=response.json()
+    return ans['generated_text']
 
 
 if __name__=="__main__":

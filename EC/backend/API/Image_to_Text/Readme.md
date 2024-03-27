@@ -22,12 +22,15 @@ This project aims to leverage state-of-the-art machine learning models to conver
 - Retail and E-commerce
 
 ## Dependencies 
-* os : Provides functions for interacting with the operating system. 
-* Base64 : Encodes binary data (images) into ASCII characters.
-* PIL : Python Imaging Library for opening, manipulating and resizing.
-* Transformers : Library for building and using state-of-the-art tranformers - based language models.
-* requests: A library for making HTTP requests.
-* flask & CORS: Allows to create end-point.
+
+* `OS` : Provides functions for interacting with the operating system. 
+* `Base64` : Encodes binary data (images) into ASCII characters.
+* `PIL` : Python Imaging Library for opening, manipulating and resizing.
+* `Transformers` : Library for building and using state-of-the-art tranformers - based language models.
+* `AutoProcessor` :  An MLflow utility for automatic data preprocessing and feature extraction.
+* `AutoModelForVision2Seq` : A feature in MLflow for automated vision-to-sequence model architecture selection and training.
+* `requests` : A library for making HTTP requests.
+* `flask & CORS` : Allows to create end-point.
 
 ## Installation 
 
@@ -39,10 +42,58 @@ To install the required Python libraries, use pip:
 pip install -r requirements.txt
 ```
 
-
-## Configuration
+### Configuration
 
 The application supports custom configurations through environment variables. Refer to the .env file for available configuration options.
 
+### Input Images
+
+- URL
+   - `image_url` : Copy url of any image and upload.
+- File
+   - `Image_file` : Upload an image from the local machine (Supported formats: PNG , JPEG. Supported size: 200Mb).
+
+### Generation
+- `/generate-text` : Generates the response for the uploaded image in the form of text.
+
 ## Get Started
+
+* Create any virtual environment and activate it.
+```bash
+python -m venv env
+source activate env
+```
+* Install the necessary requirements.
+ ```bash
+pip install -r requirements.txt
+```
+* Run the file Image_to_text.py.  
+```bash
+python3 Image_to_text.py
+```
+* The server gets activated on the port 5000.
+* The server will run with the localhost:5000 port which is linked to the UI.
+* Upload the image either through image uploader or through the URL.
+* Image will be saved in a new folder named **images**.
+* The response will be generated for the provided image.
+
+## Inference 
+
+You can inference the model locally by following the below steps :
+* Run the image_to_Text(URL,Upload).py file 
+```bash
+python3 Image_to_text(URL,Upload).py
+```
+* The server gets activated on the port 5000.
+* You need the run requests file by keeping the server running.
+* For `URL` run the file request(url).py
+```bash
+python3 request(url).py
+```
+* For `Image Upload` run the file request(upload).py
+```bash
+python3 request(upload).py
+```
+* The reponse will be generated for the uploaded image 
+* There are some sample input images in the folder **Input**
 

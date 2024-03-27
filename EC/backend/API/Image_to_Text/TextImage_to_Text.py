@@ -1,3 +1,4 @@
+### Converts the text from the images into the text ###
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 from PIL import Image
 import requests
@@ -24,4 +25,4 @@ generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)
 
 print(generated_text)  # Print the extracted text
 
-# https://i.postimg.cc/ZKwLg2Gw/367-14.png
+# https://i.postimg.cc/ZKwLg2Gw/367-14.png (Sample URL)

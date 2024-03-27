@@ -1,47 +1,73 @@
+import io
+import os
+import datetime
 import requests
+import base64
 from PIL import Image
 from transformers import AutoProcessor, AutoModelForVision2Seq
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
+app = Flask(__name__)
+CORS(app)
 
+# Load processor and model
 model = AutoModelForVision2Seq.from_pretrained("microsoft/kosmos-2-patch14-224")
 processor = AutoProcessor.from_pretrained("microsoft/kosmos-2-patch14-224")
 
-prompt = "<grounding>An image of"
+@app.route("/generate-text", methods=["POST"])
+def generate_text():
+   try:
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    os.makedirs('images', exist_ok=True)
+    if 'file' in request.files:
+        img_file = request.files['file']
+        img_file_path = os.path.join('images', 'image.png')
+        img_file.save(img_file_path)
+        image = Image.open(img_file_path)
+        print("Image saved successfully")
 
-url = "https://huggingface.co/microsoft/kosmos-2-patch14-224/resolve/main/snowman.png"
-image = Image.open(requests.get(url, stream=True).raw)
+    elif 'url' in request.form:
+        url  = request.form.get('url')
+        image = Image.open(requests.get(url, stream=True).raw)
+        img_file_path = 'images/image_' + timestamp + '.jpg'
+        image.save(img_file_path)
+        print("Image downloaded and saved successfully")
 
-# # image_path = "man walking.png"
-# image = Image.open('fire.png')
+    else:
+        return "Please provide a valid URL for image download or upload a valid image file."
 
-# The original Kosmos-2 demo saves the image first then reload it. For-= some images, this will give slightly different image input and change the generation outputs.
-image.save("new_image.jpg")
-image = Image.open("new_image.jpg")
+    with open(img_file_path, "rb") as file:
+        img_data = file.read()
+        img_base64 = base64.b64encode(img_data).decode("utf-8")
 
-inputs = processor(text=prompt, images=image, return_tensors="pt")
+    image = Image.open(io.BytesIO(img_data))
+    print("Image saved in Bytes successfully ")
 
-generated_ids = model.generate(
-    pixel_values=inputs["pixel_values"],
-    input_ids=inputs["input_ids"],
-    attention_mask=inputs["attention_mask"],
-    image_embeds=None,
-    image_embeds_position_mask=inputs["image_embeds_position_mask"],
-    use_cache=True,
-    max_new_tokens=128,
-)
-generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+    # Process the image and generate text
+    inputs = processor(text="<grounding>An image of", images=image, return_tensors="pt")
+    generated_ids = model.generate(
+        pixel_values=inputs["pixel_values"],
+        input_ids=inputs["input_ids"],
+        attention_mask=inputs["attention_mask"],
+        image_embeds=None,
+        image_embeds_position_mask=inputs["image_embeds_position_mask"],
+        use_cache=True,
+        max_new_tokens=128,
+    )
+    generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
-# Specify `cleanup_and_extract=False` in order to see the raw model generation.
-processed_text = processor.post_process_generation(generated_text, cleanup_and_extract=False)
+    # By default, the generated text is cleaned up.
+    processed_text = processor.post_process_generation(generated_text)[0]
+    print("processed_text:" , processed_text)
 
-# print(processed_text)
-# `<grounding> An image of<phrase> a snowman</phrase><object><patch_index_0044><patch_index_0863></object> warming himself by<phrase> a fire</phrase><object><patch_index_0005><patch_index_0911></object>.`
+    return {
+    "message": processed_text,
+    "image_base64": img_base64
+   }
 
-# By default, the generated  text is cleanup and the entities are extracted.
-processed_text = processor.post_process_generation(generated_text)
+   except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-print(processed_text)
-# `An image of a snowman warming himself by a fire.`
-
-#xprint(entities)
-# `[('a snowman', (12, 21), [(0.390625, 0.046875, 0.984375, 0.828125)]), ('a fire', (41, 47), [(0.171875, 0.015625, 0.484375, 0.890625)])]`
+if __name__ == "__main__":
+    app.run(debug=True, host='192.168.0.231', port=5000)

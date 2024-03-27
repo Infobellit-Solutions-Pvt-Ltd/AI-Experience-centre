@@ -1,4 +1,4 @@
-### Flask UI with Image Upload ###
+### Flask streamlit UI with Image Upload ###
 
 import streamlit as st
 import io

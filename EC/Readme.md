@@ -4,6 +4,7 @@
 ## Features
 - Image to text
 - Text to Image
+- Text to video
 - Retrieval augmented Generation(RAG)
 <!-- - Text to video -->
 
@@ -12,9 +13,9 @@
 - 16GB GPU(to run the models)
 
 ## What user can Experience?
-##### Image to text
-##### Text to image
-##### RAG [Click here for more...](./backend/API/RAG/Readme.md)
+##### Image to text [Click here for more...](./backend/API/Readme.md)
+##### Text to image  [Click here for more...](./backend/API/Readme.md)
+##### RAG [Click here for more...](./backend/API/Readme.md)
 
 ## Installation
 

@@ -1,16 +1,15 @@
-# Ignore directories and files
-env/
+# Include git links,(Done)
+# Rename the name of EC(Done)
+# Review the AI-docs(WIP)
+# Navigation in Wiki-js(need to assign)
+# Codelama
+# Debugging code automatically
+# Need t o havce a single readme fiel for the entire EC.
+# Dynamic text box(open text box wherever required)
 .idea
-__pycache__
-documents
-faiss_index
-API-testing.py
-demo.py
-Extracted_links.txt
-features.py
-features2.py
-features3.py
-re.py
-customllm.py
 demo
-app.py
+documents
+env/
+faiss_index
+output_parser.py
+test.py

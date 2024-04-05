@@ -62,7 +62,16 @@ The './rag' Python script defines a Flask web application for web scraping(extra
 - Runs the Flask application on `localhost` at port `8888` in debug mode.
 
 <!-- Please note that the actual functionality of the code depends on the implementation details of the classes and functions from the `rag` and `langchain` packages. -->
-
+## Additional features
+### Pre-Retrievel
+1) **Meta data integration:**
+2) **Indexing structure:** 
+    - Adding embeddings
+    - Removal of embeddings
+    - Updating the embeddings
+### Post-Retrievel
+1) **Re-ranking**
+    - FlashRank Reranking, Ranker
 ## Get Started
  - Create any virtual environment(python -m venv env) and activate it
  - Install the requirements `pip install -r requirements.txt`

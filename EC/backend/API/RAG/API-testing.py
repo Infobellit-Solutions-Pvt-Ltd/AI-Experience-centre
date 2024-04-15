@@ -47,7 +47,7 @@ def test_generator():
     endpoint = f"{url}/generator"
     # headers = {"Content-Type": "application/json"}
     data={
-        'message':input('Enter the Query:')
+        'message':'What are the products offered by the Triveni Turbines company?'
     }
     response = requests.post(url=endpoint,json=data)
     print(response.text)
@@ -94,18 +94,17 @@ def test_llm():
 
 
 def test_scrape():
-    # end_point = "http://192.168.0.255:8888/extract_link"
-    end_point = "http://192.168.0.255:8888/link"
+    end_point = "http://192.168.0.255:8888/extract_link"
     data = {
-        'link':'https://en.wikipedia.org/wiki/Talk:IBM#Founders'
+        'link':'https://www.triveniturbines.com/'
     }
     response = requests.post(url=end_point,json=data)
     print(response.text)
 
-test_upload_doc()
+# test_upload_doc()
 # test_generator()
 # generate_text()
 # test_remove_profile()
-# test_generator()
+test_generator()
 # test_llm()
 # test_scrape()

@@ -322,7 +322,7 @@ def generator():
             print("Searching...")
             retriever = new_db.as_retriever(search_type="similarity", search_kwargs={"k": 10})
             relevant_documents = retriever.get_relevant_documents(query)
-            print("Relevant_dpcs",relevant_documents)
+            print("Relevant_docs",relevant_documents)
             passage = []
             meta_data = []
             for doc in relevant_documents:
@@ -337,7 +337,7 @@ def generator():
             # print("3")
             results = ranker.rerank(rerankrequest)
             # print("4")
-            print("\n\nReranking Flashrank query : ",results[0])
+            # print("\n\nReranking Flashrank query : ",results[0])
             passages = results[0]
 
 
@@ -358,7 +358,8 @@ def generator():
             # Answer: 
             # """
             # output_parser = "Generate the answer in proper way with proper bullets and punctuation in required places and formats"
-            url = "http://192.168.0.139:8081/generate"
+            # url = "http://192.168.0.182:8081/generate"
+            url = "http://192.168.0.231:9090/generate"
             data = {
                 "inputs": prompt_template,
                 "parameters": {"max_new_tokens": 512}
@@ -369,8 +370,8 @@ def generator():
             reply = response.json()
             ans = str(reply['generated_text'].replace(' n',''))
             print(ans)
-            # return jsonify({"answer":ans })
-            return ans
+            return jsonify({"answer":ans })
+            
         else:
             return 'No database file found'
     except Exception as e:
@@ -386,15 +387,15 @@ def llm():
     print("Query:",query)
     # print(query)
     # flan-t5-small
-    # url = "http://192.168.0.231:9090/generate"\
-    url = "http://192.168.0.139:8081/generate"
+    url = "http://192.168.0.231:9090/generate"
+    # url = "http://192.168.0.182:8083/generate"
     data = {
         "inputs": query,
         "parameters": {
             "max_new_tokens": 250
         }
     }
-    response = requests.post(url, json=data)
+    response = requests.post(url=url, json=data)
     ans = response.json()['generated_text']
     print("answer:",ans)
     # return ans
@@ -415,4 +416,4 @@ def llm():
 
 if __name__=="__main__":
     # load_docs_and_save(directory="documents")
-    app.run(debug=True,host="0.0.0.0",port=8888)
+    app.run(host="0.0.0.0",port=8888)

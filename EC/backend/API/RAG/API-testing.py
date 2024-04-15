@@ -9,7 +9,7 @@ def test_upload_doc():
     endpooint = f'{url}/uploadDoc'  # Change the URL if your server is running on a different address
 
     files = {'file': open(f'C:/Users/User/Downloads/Advance_Rag.pdf', 'rb')}  # Replace 'path_to_your_file_here.pdf' with the actual path to your file
-
+    print(files)
     response = requests.post(url=endpooint, files=files)
 
     print(response.json())
@@ -23,7 +23,7 @@ def test_remove_profile():
     response = requests.post(url=endpoint,headers=headers,json=data)
     print(response.json())
 def test_delete_file():
-    endpoint = 'http://192.168.1.185:8888/delete_files'
+    endpoint = 'http://192.168.0.255:8888/delete_files'
     headers = {'Content-Type':'application/json'}
     data = {
         'file_name':'Teja_CV.pdf'
@@ -43,7 +43,7 @@ def generate_text():
     print(type(response.text))
 
 def test_generator():
-    # url = 'https://192.168.1.185:8888'
+    # url = 'https://192.168.0.255:8888'
     endpoint = f"{url}/generator"
     # headers = {"Content-Type": "application/json"}
     data={
@@ -71,7 +71,7 @@ def llm():
 
 
 def test_llm():
-    end_point = "http://192.168.1.185:8888/llm"
+    end_point = "http://192.168.0.255:8888/llm"
     # code_output_parser = "Generate the code in proper format with proper indendation"
     # summary_output_parser = "Generate the output as bullet points"
     Content = "These output parsers extract tool calls from OpenAI’s function calling API responses. This means they are only usable with models that support function calling, and specifically the latest tools and tool_choice parameters. We recommend familiarizing yourself with function calling before reading this guide."
@@ -92,9 +92,20 @@ def test_llm():
     
     # print(type(dict(response.text)))
 
-# test_upload_doc()
+
+def test_scrape():
+    # end_point = "http://192.168.0.255:8888/extract_link"
+    end_point = "http://192.168.0.255:8888/link"
+    data = {
+        'link':'https://en.wikipedia.org/wiki/Talk:IBM#Founders'
+    }
+    response = requests.post(url=end_point,json=data)
+    print(response.text)
+
+test_upload_doc()
 # test_generator()
 # generate_text()
 # test_remove_profile()
 # test_generator()
-test_llm()
+# test_llm()
+# test_scrape()

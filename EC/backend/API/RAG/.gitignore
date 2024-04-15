@@ -13,3 +13,4 @@ env/
 faiss_index
 output_parser.py
 test.py
+Extracted_links.txt

@@ -16,7 +16,7 @@ from Scrapping.Link_scraper import LinkScraper
 from Scrapping.Text_extractor import TextExtractor
 import warnings
 from flask import Flask, jsonify, request
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from flashrank import Ranker, RerankRequest
 import datetime
 import yaml
@@ -53,7 +53,9 @@ def scrape(head_url,max_length):
 
 # Webscraping --> get link from front end -> 
 @app.route('/extract_link', methods=['POST'])
+@cross_origin()
 def extract_link():
+    print(1)
     data = request.get_json()
     print(data)
     extracted_link = data.get('link')
@@ -374,8 +376,6 @@ def generator():
     except Exception as e:
         return "Error occurred during generation: " + str(e), 500
 
-app = Flask(__name__)
-
 @app.route('/llm', methods=['POST'])
 def llm():
     # print("1\n")
@@ -396,8 +396,9 @@ def llm():
     }
     response = requests.post(url, json=data)
     ans = response.json()['generated_text']
-    # print("answer:",ans)
+    print("answer:",ans)
     # return ans
+    # ans = ''
     
 
     output_parser = [
@@ -410,7 +411,7 @@ def llm():
     parser = StructuredOutputParser.from_response_schemas(output_parser)
     a = parser.get_format_instructions()
     print(a)
-    return jsonify(a)
+    return jsonify('ans')
 
 if __name__=="__main__":
     # load_docs_and_save(directory="documents")

@@ -2,7 +2,8 @@
 This code deals with RAG which involves with few features.
 1)Web scrapping and Douments uploading
 2)Adding and Deleting the embeddings with repsect to documents
-3)Generation with custom deployed models
+3)Generation model deployed in the local server with TGI image
+Also interaction with llm 
 """
 import os
 from glob import glob
@@ -10,11 +11,13 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, JSONLoader, CSVLoader, BSHTMLLoader, Docx2txtLoader
 from langchain_community.vectorstores.faiss import FAISS
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from langchain.output_parsers.structured import StructuredOutputParser, ResponseSchema
 from Scrapping.Link_scraper import LinkScraper
 from Scrapping.Text_extractor import TextExtractor
 import warnings
 from flask import Flask, jsonify, request
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
+from flashrank import Ranker, RerankRequest
 import datetime
 import yaml
 import requests
@@ -25,7 +28,9 @@ import numpy as np
 warnings.filterwarnings("ignore")
 app = Flask(__name__)
 CORS(app)
+ranker = Ranker()
 
+CORS(app)
 # <----------------------------------------------------------Web Scrapping------------------------------------------------------------------------->
  
 # Web Scraping ()
@@ -48,7 +53,9 @@ def scrape(head_url,max_length):
 
 # Webscraping --> get link from front end -> 
 @app.route('/extract_link', methods=['POST'])
+@cross_origin()
 def extract_link():
+    print(1)
     data = request.get_json()
     print(data)
     extracted_link = data.get('link')
@@ -129,6 +136,7 @@ def load_docs_and_save(directory):
     Returns:
         str: Status message indicating success or failure.
     """
+    print("Loading the documents")
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
         chunk_overlap=100
@@ -312,8 +320,9 @@ def generator():
         if os.path.exists(db_name):
             new_db = FAISS.load_local(db_name, embeddings)
             print("Searching...")
-            retriever = new_db.as_retriever(search_type="similarity", search_kwargs={"k": 4})
+            retriever = new_db.as_retriever(search_type="similarity", search_kwargs={"k": 10})
             relevant_documents = retriever.get_relevant_documents(query)
+            print("Relevant_dpcs",relevant_documents)
             passage = []
             meta_data = []
             for doc in relevant_documents:
@@ -321,19 +330,38 @@ def generator():
                 sub_metadata = doc.metadata
                 passage.append(sub_passage)
                 meta_data.append(sub_metadata)
-            context = passage
+            
+            formatted_data = [{"text": doc.page_content} for doc in relevant_documents]
+
+            rerankrequest = RerankRequest(query=query, passages=formatted_data)
+            # print("3")
+            results = ranker.rerank(rerankrequest)
+            # print("4")
+            print("\n\nReranking Flashrank query : ",results[0])
+            passages = results[0]
+
+
+            # return "completed"
+            # context = passages
             prompt_template = f"""
-            Context:{context}
-            ###
-            Instruction : Give the response from the given context in generative approach if data not there from context then say as 'I don't know' and don't make any anwer.
-            Obey the Instruction that's an order for you
-            Question:{query}
-            Answer: 
-            """
-            url = "http://192.168.0.231:9900/generate"
+                Provide exact short answer the following question by considering the context.
+                Question: {query}
+                Context: {passages}
+                Answer: 
+                    """
+            # f"""
+            # Context:{context}
+            # ###
+            # Instruction : Give the response from the given context in generative approach if data not there from context then say as 'I don't know' and don't make any anwer.
+            # Obey the Instruction that's an order for you
+            # Question:{query}
+            # Answer: 
+            # """
+            # output_parser = "Generate the answer in proper way with proper bullets and punctuation in required places and formats"
+            url = "http://192.168.0.139:8081/generate"
             data = {
                 "inputs": prompt_template,
-                "parameters": {"max_new_tokens": 250}
+                "parameters": {"max_new_tokens": 512}
             }
             headers = {"Content-Type": "application/json"}
 
@@ -341,13 +369,50 @@ def generator():
             reply = response.json()
             ans = str(reply['generated_text'].replace(' n',''))
             print(ans)
-            return jsonify({"answer":ans })
+            # return jsonify({"answer":ans })
+            return ans
         else:
-            return jsonify( 'No database file found')
+            return 'No database file found'
     except Exception as e:
-        return jsonify({"Error occurred during generation": str(e)}), 500
+        return "Error occurred during generation: " + str(e), 500
+
+@app.route('/llm', methods=['POST'])
+def llm():
+    # print("1\n")
+    data = request.get_json()
+    # print(data)
+    # query = data['text']
+    query = data.get('text', '')
+    print("Query:",query)
+    # print(query)
+    # flan-t5-small
+    # url = "http://192.168.0.231:9090/generate"\
+    url = "http://192.168.0.139:8081/generate"
+    data = {
+        "inputs": query,
+        "parameters": {
+            "max_new_tokens": 250
+        }
+    }
+    response = requests.post(url, json=data)
+    ans = response.json()['generated_text']
+    print("answer:",ans)
+    # return ans
+    # ans = ''
     
 
+    output_parser = [
+        ResponseSchema(name=ans,description="LLM response",type="dict")
+    ]
+    # Parse the generated_text using the StructuredOutputParser
+
+    # Return the parsed response to the frontend
+    
+    parser = StructuredOutputParser.from_response_schemas(output_parser)
+    a = parser.get_format_instructions()
+    print(a)
+    return jsonify('ans')
 
 if __name__=="__main__":
+    # load_docs_and_save(directory="documents")
     app.run(debug=True,host="0.0.0.0",port=8888)

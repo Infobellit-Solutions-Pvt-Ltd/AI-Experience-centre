@@ -1,9 +1,8 @@
 """
 This code deals with RAG which involves with few features.
-1)Web scrapping and Douments uploading
-2)Adding and Deleting the embeddings with repsect to documents
-3)Generation model deployed in the local server with TGI image
-Also interaction with llm 
+1)Web scrapping and Documents uploading(Supports '.pdf','.docx','.csv','.html','.txt','.json') ---> This is a knowledge base
+2)Adding and Deleting the embeddings with repsect to documents ---> For data privacy
+3)Generation model deployed in the local server with TGI image ---> QA with knowledge base and LLM
 """
 import os
 from glob import glob
@@ -30,43 +29,24 @@ app = Flask(__name__)
 CORS(app)
 ranker = Ranker()
 
-CORS(app)
+
 # <----------------------------------------------------------Web Scrapping------------------------------------------------------------------------->
- 
-# Web Scraping ()
-def scrape(head_url,max_length):
-    try:
-        web_scraper = LinkScraper(head_url, max_length, num_of_urls=1)
-        web_scraper.Links_Extractor()
-        print("All the available links are saved...")
- 
-        # Text extraction
-        TextExtractor().Extract_text()
- 
-        print("All the text got scraped")
-        load_docs_and_save(directory='documents')
-    except Exception as e:
-        print(f"Error occurres in the main function: {e}")
-        return None
- 
 
-
-# Webscraping --> get link from front end -> 
+# Webscraping --> get link from front end 
 @app.route('/extract_link', methods=['POST'])
 @cross_origin()
 def extract_link():
-    print(1)
     data = request.get_json()
-    print(data)
     extracted_link = data.get('link')
-    print("Extracted_link",extracted_link)
-    # numberOfLinks = int(data.get('numberOfLinks'))
     numberOfLinks = 1
     print("Extracted Link:", extracted_link)
-    print("Number Of Links: " , numberOfLinks)
-    ack = scrape(extracted_link, numberOfLinks)
-    print(ack)
-    load_docs_and_save(directory="documents")
+    web_scraper = LinkScraper(head_url=extracted_link, max_length=numberOfLinks, num_of_urls=1)
+    web_scraper.Links_Extractor()
+    print("All the available links are saved...")
+    # Text extraction
+    TextExtractor().Extract_text()
+    print("Web Scrapping done")
+    load_docs_and_save(directory="documents/Content.txt")
     # Return a response if needed
     return jsonify({"message": "Webscrapping Success","status":200})
 
@@ -82,6 +62,7 @@ def getData():
         return jsonify({'text':fileContent,"status":200})
     except FileExistsError as e:
         return jsonify({'text':'Unable to get data',"status":404})
+    
 # <----------------------------------------------------Uploading documents from local machine------------------------------------------------------> 
 
 @app.route("/uploadDoc", methods=['POST'])
@@ -104,7 +85,6 @@ def uploadDoc():
         return jsonify({"message": f"File {doc_file.filename} uploaded"})
 
     return jsonify({"message": f"File {doc_file.filename} not uploaded (already exists)"})
-
 
 # <------------------------------------------Loading all the documents from a directory and embedding them-----------------------------------------> 
 
@@ -334,15 +314,11 @@ def generator():
             formatted_data = [{"text": doc.page_content} for doc in relevant_documents]
 
             rerankrequest = RerankRequest(query=query, passages=formatted_data)
-            # print("3")
             results = ranker.rerank(rerankrequest)
-            # print("4")
-            # print("\n\nReranking Flashrank query : ",results[0])
             passages = results[0]
 
 
-            # return "completed"
-            # context = passages
+            
             prompt_template = f"""
                 Provide exact short answer the following question by considering the context.
                 Question: {query}
@@ -379,16 +355,13 @@ def generator():
 
 @app.route('/llm', methods=['POST'])
 def llm():
-    # print("1\n")
     data = request.get_json()
-    # print(data)
-    # query = data['text']
     query = data.get('text', '')
     print("Query:",query)
-    # print(query)
+
     # flan-t5-small
     url = "http://192.168.0.231:9090/generate"
-    # url = "http://192.168.0.182:8083/generate"
+    
     data = {
         "inputs": query,
         "parameters": {
@@ -398,9 +371,6 @@ def llm():
     response = requests.post(url=url, json=data)
     ans = response.json()['generated_text']
     print("answer:",ans)
-    # return ans
-    # ans = ''
-    
 
     output_parser = [
         ResponseSchema(name=ans,description="LLM response",type="dict")
@@ -415,5 +385,4 @@ def llm():
     return jsonify('ans')
 
 if __name__=="__main__":
-    # load_docs_and_save(directory="documents")
     app.run(host="0.0.0.0",port=8888)
